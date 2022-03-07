@@ -2,3 +2,5 @@ test/*
 *.in
 *.log
 test.py
+*.ipynb
+/__pycache__/
