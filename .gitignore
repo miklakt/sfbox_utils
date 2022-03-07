@@ -1,0 +1,4 @@
+test/*
+*.in
+*.log
+test.py
