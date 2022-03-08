@@ -100,7 +100,7 @@ def sfbox_calls_sh(dir = None , exit_python = True):
     cpu_count = conf['cpu_count']
     exe_path = conf['exe_path']
     script_dir = pathlib.Path(__file__).parent
-    bash_script = str(script_dir / "script" / "call_sfbox_multifile.sh")
+    bash_script = str(script_dir / "scripts" / "call_sfbox_multifile.sh")
         
     proc = subprocess.Popen(
         [bash_script+f" {cpu_count}" + f" {exe_path}"],
