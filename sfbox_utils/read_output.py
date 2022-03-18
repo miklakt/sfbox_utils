@@ -25,10 +25,10 @@ def get_line_type(line, raise_error = True):
     line = line.rstrip('\r\n')
     if (line == ''):
         return OutputLineType.empty
-    
+
     if (line == 'system delimiter'):
         return OutputLineType.block_separator
-    
+
     if ' : ' in line:
         if ('vector' in line) or ('profile' in line):
             return OutputLineType.vector_name
@@ -45,19 +45,19 @@ def get_line_type(line, raise_error = True):
 
 
 def parse_statement(
-        line : str, 
-        parse_all_keywords = False, 
-        new_sep = ":", 
+        line : str,
+        parse_all_keywords = False,
+        new_sep = ":",
         replace_spaces = " ",
         convert_to = None,
         to_dict = False,
         ):
 
     type_, type_title, parameter_name, parameter_value = [l.strip() for l in line.split(sep = ":")]
-    
+
     if convert_to is not None:
         parameter_value=convert_to(parameter_value)
-    
+
     if not(parse_all_keywords):
         parameter = new_sep.join(
             [
@@ -75,6 +75,7 @@ def parse_statement(
     else:
         return type_, type_title, parameter_name, parameter_value
 
+
 def vector_str_to_float(vector, as_numpy = True):
     v = [float(v_) for v_ in vector]
     if as_numpy:
@@ -84,20 +85,20 @@ def vector_str_to_float(vector, as_numpy = True):
 
 
 def parse_vector(
-    vector_name : str, 
-    vector_elements : List[str], 
-    parse_all_keywords = False, 
-    new_sep = ":", 
+    vector_name : str,
+    vector_elements : List[str],
+    parse_all_keywords = False,
+    new_sep = ":",
     replace_spaces = " ",
     convert_to = None,
     to_dict = False,
     ):
-    
+
     type_, type_title, profile_name, profile_type = [l.strip() for l in vector_name.split(sep = ":")]
-    
+
     if convert_to is not None:
         vector_elements=convert_to(vector_elements)
-    
+
     if not(parse_all_keywords):
         parameter = new_sep.join(
             [
@@ -142,7 +143,7 @@ def parse_file(
 
         if linetype == OutputLineType.invalid:
             raise ParseError(f"Invalid expression in line {i}")
-        
+
         ##Reading vector elements
         if linetype == OutputLineType.vector_element:
             #When we meet vector element, we must have read vector name
@@ -158,13 +159,13 @@ def parse_file(
             else:
                 if vector_name is not None:
                     raise ParseError(f"Vector name must be followed by vector elements, line {i}")
-        
+
         if linetype == OutputLineType.vector_name:
             vector_name = line
 
         if linetype == OutputLineType.statement:
             lines.append(parse_statement(line, convert_to=convert_value_to, to_dict=to_dict, **kwargs))
-                
+
         if linetype == OutputLineType.block_separator:
             if to_dict:
                 lines = dict((key, val) for k in lines for key, val in k.items())
@@ -175,10 +176,10 @@ def parse_file(
         lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, **kwargs))
         vector_name = None
         vector_acc = []
-    
+
     if lines:
         blocks.append(lines)
-    
+
     if compact:
         blocks = ld_to_dl(blocks)
     return blocks
