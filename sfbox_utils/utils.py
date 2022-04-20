@@ -1,6 +1,8 @@
 import functools
 from itertools import groupby
 import itertools
+import pathlib
+import subprocess
 
 def ld_to_dl(ld : list, keep_dim = True) -> dict:
     #list of dicts to dict of lists
@@ -64,3 +66,14 @@ def check_homogeneous_dtype(iterable, dtype = None):
         return all_equal(types)
     else:
         return all_equal(map(lambda x: isinstance(x, dtype), iterable))
+
+def split_calculations(filename):
+    filename = pathlib.Path(filename)
+    script_dir = pathlib.Path(__file__).parent
+    bash_script = str(script_dir / "scripts" / "split_output.sh")
+    subprocess.run(
+        [bash_script+f" {filename.name}"],
+        shell =True,
+        stdout=subprocess.PIPE,
+        cwd = filename.parent
+        )

@@ -165,6 +165,7 @@ def parse_file(
 
             return True
 
+    print(f"{file} is open")
 
     __SKIP__ = True
 
@@ -223,19 +224,29 @@ def parse_file(
                 lines.append(parse_statement(line, convert_to=convert_value_to, to_dict=to_dict, **kwargs))
 
         if linetype == OutputLineType.block_separator:
+            print("system delimiter")
             if to_dict:
                 lines = dict((key, val) for k in lines for key, val in k.items())
             blocks.append(lines)
             lines = []
 
+    print("EOF")
+
     if vector_acc:
-        lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, **kwargs))
+        if not skip_vector:
+            lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, to_dict=to_dict, **kwargs))
         vector_name = None
         vector_acc = []
+    else:
+        if vector_name is not None:
+            raise ParseError(f"Vector name must be followed by vector elements, line {i}")
 
     if lines:
+        if to_dict:
+            lines = dict((key, val) for k in lines for key, val in k.items())
         blocks.append(lines)
 
     if compact:
         blocks = ld_to_dl(blocks)
+    
     return blocks

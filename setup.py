@@ -12,6 +12,6 @@ setup(
     author_email = 'miklakt@gmail.com',
     packages=['sfbox_utils'],
     install_requires=['numpy','pandas'],
-    scripts=['sfbox_utils/scripts/call_sfbox_multifile.sh'],
+    scripts=['sfbox_utils/scripts/call_sfbox_multifile.sh', 'sfbox_utils/scripts/split_output.sh'],
     include_package_data=True,
 )
