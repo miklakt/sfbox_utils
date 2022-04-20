@@ -6,7 +6,7 @@ HERE = pathlib.Path(__file__).parent
 
 setup(
     name='sfbox_utils',
-    version='0.0.1',
+    version='0.0.2',
     description='Pandas DataFrame interface for sfbox (namics)',
     author='Laktionov Mikhail',
     author_email = 'miklakt@gmail.com',

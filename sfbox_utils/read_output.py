@@ -1,7 +1,10 @@
+from nis import match
 import pathlib
 from typing import List
 from typing import Union
 from enum import Enum, auto
+
+from nbformat import read
 
 
 
@@ -126,22 +129,42 @@ def parse_file(
         to_dict = True,
         ignore_fields = None, 
         read_fields = None,
+        read_fields_regex = None,
         **kwargs):
-    if (ignore_fields is not None) and (read_fields is not None):
-        raise AttributeError("Can not pass ignore_fields and read_fields at the same time")
     
-    def field_to_skip(line_, linetype_):
-        if linetype_ is OutputLineType.vector_element: return False
-        
-        if linetype is OutputLineType.statement:
-            line_ = line_.rsplit(":",1)[0]
-        line_ = line_.rstrip()
-        if (ignore_fields is None) and (read_fields is None):
+    if (ignore_fields is not None):
+        if (read_fields is not None) or (read_fields_regex is not None):
+            raise AttributeError("Can not pass ignore_fields and read_fields at the same time")
+    
+    if read_fields_regex is not None:
+        if not isinstance(read_fields_regex, list):
+            read_fields_regex = [read_fields_regex]
+        import re
+        p = [re.compile(r) for r in read_fields_regex] 
+    
+    if all([ignore_fields is None, read_fields is None, read_fields_regex is None]):
+        def field_to_skip(line_, linetype_):
             return False
-        elif (ignore_fields is not None):
-            return line_ in ignore_fields
-        else:
-            return line_ not in read_fields
+    else:
+        def field_to_skip(line_, linetype_):
+            if linetype_ is OutputLineType.vector_element:
+                return False
+
+            if linetype is OutputLineType.statement:
+                line_ = line_.rsplit(":",1)[0]
+            line_ = line_.rstrip()
+
+            if ignore_fields is not None:
+                return line_ in ignore_fields
+
+            if read_fields is not None:
+                if line_ in read_fields: return False
+
+            if read_fields_regex is not None:
+                if any([bool(p_.match(line_)) for p_ in p]): return False
+
+            return True
+
 
     __SKIP__ = True
 
