@@ -1,15 +1,13 @@
-from nis import match
 import pathlib
 from typing import List
 from typing import Union
 from enum import Enum, auto
 
-from nbformat import read
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-
-
-from .utils import try_cast_to_numeric, ld_to_dl
-
+from .utils import try_cast_to_numeric
 
 class ParseError(ValueError):
     pass
@@ -125,26 +123,26 @@ def parse_file(
         file : Union[str, pathlib.Path],
         convert_vector_to = vector_str_to_float,
         convert_value_to = try_cast_to_numeric,
-        compact = True,
         to_dict = True,
-        ignore_fields = None, 
+        ignore_fields = None,
         read_fields = None,
         read_fields_regex = None,
         **kwargs):
-    
+
     if (ignore_fields is not None):
         if (read_fields is not None) or (read_fields_regex is not None):
             raise AttributeError("Can not pass ignore_fields and read_fields at the same time")
-    
+
     if read_fields_regex is not None:
         if not isinstance(read_fields_regex, list):
             read_fields_regex = [read_fields_regex]
         import re
-        p = [re.compile(r) for r in read_fields_regex] 
-    
+        p = [re.compile(r) for r in read_fields_regex]
+
     if all([ignore_fields is None, read_fields is None, read_fields_regex is None]):
         def field_to_skip(line_, linetype_):
             return False
+
     else:
         def field_to_skip(line_, linetype_):
             if linetype_ is OutputLineType.vector_element:
@@ -165,13 +163,11 @@ def parse_file(
 
             return True
 
-    print(f"{file} is open")
+    logger.debug(f"{file} is open")
 
     __SKIP__ = True
 
     f = open(file)
-    #to collect all calculations in a list
-    blocks = []
     #to collect all lines of current block
     lines = []
     #to store vector name
@@ -196,11 +192,11 @@ def parse_file(
             #When we meet vector element, we must have read vector name
             if vector_name is None:
                 raise ParseError(f"Vector element is read but no vector name found, line {i}")
-            
+
             if not skip_vector:
                 vector_acc.append(line)
             else:
-                #we do not need to read vector, 
+                #we do not need to read vector,
                 #but we indicate we indeed read vector elements
                 vector_acc = __SKIP__
 
@@ -210,7 +206,7 @@ def parse_file(
                     lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, to_dict=to_dict, **kwargs))
                 vector_name = None
                 vector_acc = []
-            
+
             else:
                 if vector_name is not None:
                     raise ParseError(f"Vector name must be followed by vector elements, line {i}")
@@ -224,13 +220,19 @@ def parse_file(
                 lines.append(parse_statement(line, convert_to=convert_value_to, to_dict=to_dict, **kwargs))
 
         if linetype == OutputLineType.block_separator:
-            print("system delimiter")
+            logger.debug("system delimiter")
             if to_dict:
                 lines = dict((key, val) for k in lines for key, val in k.items())
-            blocks.append(lines)
-            lines = []
+            if lines:
+                yield lines
+                lines = []
+            else:
+                logger.debug("empty calculation")
+                lines = []
+                continue
+            
 
-    print("EOF")
+    logger.debug("EOF")
 
     if vector_acc:
         if not skip_vector:
@@ -244,9 +246,4 @@ def parse_file(
     if lines:
         if to_dict:
             lines = dict((key, val) for k in lines for key, val in k.items())
-        blocks.append(lines)
-
-    if compact:
-        blocks = ld_to_dl(blocks)
-    
-    return blocks
+        yield lines
