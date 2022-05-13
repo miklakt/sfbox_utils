@@ -1,17 +1,14 @@
 import pathlib
-from typing import List
-from typing import Union
+from typing import List, Union
 from enum import Enum, auto
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 from .utils import try_cast_to_numeric
 
 class ParseError(ValueError):
     pass
-
 
 class OutputLineType(Enum):
     empty = auto()
@@ -127,7 +124,8 @@ def parse_file(
         ignore_fields = None,
         read_fields = None,
         read_fields_regex = None,
-        **kwargs):
+        #**kwargs
+        ):
 
     if (ignore_fields is not None):
         if (read_fields is not None) or (read_fields_regex is not None):
@@ -203,7 +201,15 @@ def parse_file(
         else:
             if vector_acc:
                 if not skip_vector:
-                    lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, to_dict=to_dict, **kwargs))
+                    lines.append(
+                        parse_vector(
+                            vector_name, 
+                            vector_acc, 
+                            convert_to=convert_vector_to, 
+                            to_dict=to_dict, 
+                            #**kwargs
+                            )
+                            )
                 vector_name = None
                 vector_acc = []
 
@@ -217,7 +223,14 @@ def parse_file(
 
         if linetype == OutputLineType.statement:
             if not skip_field:
-                lines.append(parse_statement(line, convert_to=convert_value_to, to_dict=to_dict, **kwargs))
+                lines.append(
+                    parse_statement(
+                    line, 
+                    convert_to=convert_value_to, 
+                    to_dict=to_dict, 
+                    #**kwargs
+                    )
+                )
 
         if linetype == OutputLineType.block_separator:
             logger.debug("system delimiter")
@@ -236,7 +249,14 @@ def parse_file(
 
     if vector_acc:
         if not skip_vector:
-            lines.append(parse_vector(vector_name, vector_acc, convert_to=convert_vector_to, to_dict=to_dict, **kwargs))
+            lines.append(parse_vector(
+                vector_name, 
+                vector_acc, 
+                convert_to=convert_vector_to, 
+                to_dict=to_dict, 
+                #**kwargs
+                )
+            )
         vector_name = None
         vector_acc = []
     else:

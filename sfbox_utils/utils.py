@@ -3,6 +3,7 @@ from itertools import groupby
 import itertools
 import pathlib
 import subprocess
+import os
 from typing import Dict, List
 
 def ld_to_dl(ld : list, keep_dim = True) -> dict:
@@ -70,6 +71,7 @@ def check_homogeneous_dtype(iterable, dtype = None):
 
 def split_calculations(filename):
     filename = pathlib.Path(filename)
+    print(f"Split all calculations in {filename.name} to separate files")
     script_dir = pathlib.Path(__file__).parent
     bash_script = str(script_dir / "scripts" / "split_output.sh")
     subprocess.run(
@@ -78,6 +80,11 @@ def split_calculations(filename):
         stdout=subprocess.PIPE,
         cwd = filename.parent
         )
+
+def get_number_of_calculations_in_file(filename):
+    bashCommand = f"grep 'system delimiter' {str(filename)} | wc -l"
+    n = int(subprocess.check_output(bashCommand, shell = True))
+    return n
 
 class DictListIterator:
     def __init__(self, dict_of_lists : Dict[str, List]) -> None:
