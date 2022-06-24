@@ -7,6 +7,19 @@ logger = logging.getLogger(__name__)
 from .utils import dl_to_ld
 
 def write_input_file(filename : Union[str, pathlib.Path], data :  Union[Dict, List[Dict]], product = False) -> bool:
+    """Write input file with provided list of dicts or dict of lists. 
+    Writes multiple calculations to one file. 
+    One can define sequential calculations either providing list of dicts 
+    or dicts with a list as an element or elements
+
+    Args:
+        filename (str | pathlib.Path): name of the file to be created
+        data (dict | list[dict]): statements to write to the file
+        product (bool, optional): if multiple elements in the data are list, write all the combinations possible
+
+    Returns:
+        bool: True if successful
+    """    
 
     if isinstance(data, Dict):
         data = dl_to_ld(data, product=product, repeat_keys=False)
