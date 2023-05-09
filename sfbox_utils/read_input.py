@@ -31,7 +31,7 @@ def get_line_type(line : str) -> str:
 
     Returns:
         str: linetype
-    """    
+    """
     line = line.rstrip('\r\n')
     if (line == ''):
         return InputLineType.empty
@@ -39,16 +39,16 @@ def get_line_type(line : str) -> str:
         return InputLineType.comment
     if (line == 'start'):
         return InputLineType.block_separator
-    if ':' in line:   
+    if ':' in line:
         if line.count(":") != 3:
             return InputLineType.invalid
         return InputLineType.statement
     return InputLineType.invalid
 
 def parse_statement(
-        line : str, 
-        parse_all_keywords = False, 
-        new_sep = ":", 
+        line : str,
+        parse_all_keywords = False,
+        new_sep = ":",
         replace_spaces = " ",
         convert_to = try_cast_to_numeric,
         to_dict = False,
@@ -77,19 +77,19 @@ def parse_statement(
         ParseError: Failed to parse, while not enough keywords in the line
 
     Returns:
-        tuple|dict: parsed to a tuple or a dict statement 
-    """    
+        tuple|dict: parsed to a tuple or a dict statement
+    """
     if ":" not in line:
         raise ParseError("Can not parse the line no separator found")
-    
+
     if line.count(":") != 3:
         raise ParseError("Must be at 3 keywords and value")
 
     type_, type_title, parameter_name, parameter_value = [l.strip() for l in line.split(sep = ":")]
-    
+
     if convert_to is not None:
         parameter_value=convert_to(parameter_value)
-    
+
     if not(parse_all_keywords):
         parameter = new_sep.join(
             [
@@ -110,17 +110,17 @@ def parse_statement(
 def parse_block(lines : Union[List[str], str], to_dict=True, **kwargs):
     if isinstance(lines, str):
         lines = [line.strip() for line in lines.split("\n")]
-    
+
     parsed_lines = [parse_statement(line, to_dict = to_dict, **kwargs) for line in lines]
-    
+
     if to_dict:
             parsed_lines = dict((key, val) for k in parsed_lines for key, val in k.items())
-    
+
     return parsed_lines
 
 def parse_file(
         file : Union[str, pathlib.Path],
-        compact = False, 
+        compact = False,
         **kwargs):
     f = open(file)
     blocks = []

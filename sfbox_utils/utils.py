@@ -103,3 +103,69 @@ class DictListIterator:
     #    if self.dl.keys() != newvalue.keys(): raise ValueError("Dict has to have the same keys")
     #    for k in self.dl.keys():
     #        self.dl[k][key] = newvalue[k]
+
+import numpy as np
+def read_initial_guess_file(file, reshape = False):
+    init_guess = open(file)
+
+    line = init_guess.readline().strip()
+
+    ngradients = int(init_guess.readline().strip())
+
+    shape = int(init_guess.readline().strip()), int(init_guess.readline().strip())
+
+    molecules = {}
+    line = init_guess.readline().strip()
+    while line == "molecule":
+        header = [init_guess.readline().strip() for i in range(2)]
+        if header != ['all', 'state']:
+            raise Exception("not implemented")
+        molecule = init_guess.readline().strip()
+        arr_size = shape[0]*shape[1]
+        arr = [init_guess.readline().strip() for i in range(arr_size)]
+        if reshape:
+            arr = np.array(np.reshape(arr, shape), dtype = float)
+        else:
+            arr = np.array(arr, dtype = float)
+        molecules.update({molecule:arr})
+        line = init_guess.readline().strip()
+
+    phibulk_solvent = float(init_guess.readline().strip())
+
+    alphabulks = {}
+    while line:
+        line = init_guess.readline().strip()
+        if line=="alphabulk":
+            molecule = init_guess.readline().strip()
+            val = float(init_guess.readline().strip())
+            alphabulks.update({molecule:val})
+            continue
+        if line == "": continue
+        if line is not None:
+            raise Exception("unexpected keyword")
+
+    return_dict = {"state" : molecules, "phibulk solvent" : phibulk_solvent, "alphabulk" : alphabulks, "gradients" : (ngradients, *shape)}
+
+    return return_dict
+
+def write_initial_guess(filename, initial_guess_dict):
+    f = open(filename, 'w')
+    def writeline(x):
+        f.write(str(x))
+        f.write("\n")
+    writeline("gradients")
+    [writeline(i) for i in initial_guess_dict["gradients"]]
+    for molecule, state in initial_guess_dict["state"].items():
+        writeline("molecule")
+        writeline("all")
+        writeline("state")
+        writeline(molecule)
+        vals = np.ravel(initial_guess_dict["state"][molecule])
+        [writeline(v) for v in vals]
+    writeline("phibulk solvent")
+    writeline(initial_guess_dict["phibulk solvent"])
+    for molecule, bulk in initial_guess_dict["alphabulk"].items():
+        writeline("alphabulk")
+        writeline(molecule)
+        writeline(bulk)
+    f.write("\n")
