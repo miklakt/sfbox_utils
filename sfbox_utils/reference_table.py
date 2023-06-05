@@ -2,7 +2,7 @@ import pathlib
 from typing import Any, Dict, Union, Callable, List, Optional
 import h5py
 import numpy as np
-import datetime
+from datetime import datetime
 
 def create_reference_dict(
         dir : Union[pathlib.Path, str] = None,
@@ -15,7 +15,7 @@ def create_reference_dict(
 
     rows = []
     for f in h5files:
-        creation_time = f.stat().st_ctime
+        creation_time = datetime.fromtimestamp(f.stat().st_ctime) 
         file = h5py.File(f)
         row = dict(file.attrs.items())
         row.update({"h5file" : str(f), "keys" : list(file.keys()), "creation_time" : creation_time})
@@ -25,9 +25,8 @@ def create_reference_dict(
 
 try:
     import pandas as pd
-    def create_reference_table(storage_dir = "h5", load_inplace = True):        
+    def create_reference_table(storage_dir = "h5", load_inplace = False):        
         
-        @pd.api.extensions.register_dataframe_accessor("dataset")
         class H5StorageAccessor:
             def __init__(self, pandas_obj):
                 self._obj = pandas_obj
@@ -61,6 +60,21 @@ try:
                     df[key] = df.apply(lambda _: H5StorageAccessor.load_dataset(_.h5file, f"/{key}"), axis=1)
                 
                 return df[keys]
+        pd.api.extensions.register_dataframe_accessor("dataset")(H5StorageAccessor)
+
+        class H5StorageAccessorSeries(H5StorageAccessor):
+            def __getitem__(self, keys):
+                if not isinstance(keys, list):
+                    keys = [keys]
+                if load_inplace:
+                    df = self._obj
+                else:
+                    df = pd.Series(index=keys)
+                for key in keys:
+                    df[key] = H5StorageAccessor.load_dataset(df.h5file, f"/{key}")
+                
+                return df[keys]
+        pd.api.extensions.register_series_accessor("dataset")(H5StorageAccessorSeries)
             
         dataframe = pd.DataFrame(create_reference_dict(storage_dir))
         return dataframe
