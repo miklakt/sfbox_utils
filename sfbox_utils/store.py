@@ -179,33 +179,6 @@ def add_external_link(
 
     if close_before_exit:
         destination.close()
-    
 
-def create_master_table(
-        dir : Union[pathlib.Path, str] = None,
-        pandas = True
-    ):
-    if dir is None:
-        dir = pathlib.Path()
-    else:
-        dir = pathlib.Path(dir)
-    h5files = dir.glob("*.h5")
-
-    rows = []
-    for f in h5files:
-        file = h5py.File(f)
-        row = dict(file.attrs.items())
-        row.update({"h5file" : str(f), "keys" : list(file.keys())})
-        rows.append(row)
-        file.close()
-    if pandas:
-        import pandas as pd
-        return pd.DataFrame(rows)
-    else:
-        return rows
-
-def load_dataset(file, key):
-    file = h5py.File(file)
-    data = np.array(file[key])
-    file.close()
-    return data
+            
+from .reference_table import *
