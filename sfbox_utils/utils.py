@@ -86,23 +86,6 @@ def get_number_of_calculations_in_file(filename):
     n = int(subprocess.check_output(bashCommand, shell = True))
     return n
 
-class DictListIterator:
-    def __init__(self, dict_of_lists : Dict[str, List]) -> None:
-        self.dl = dict_of_lists
-        lens = [len(v) for v in self.dl.values()]
-        if not all_equal(lens): raise ValueError("All lists length has to be equal")
-        self.len = lens[0]
-
-    def __len__(self) -> int:
-        return self.len
-
-    def __getitem__(self, key):
-        return {k:v[key] for k, v in self.dl.items()}
-
-    #def __setitem__(self, key : int, newvalue : Dict):
-    #    if self.dl.keys() != newvalue.keys(): raise ValueError("Dict has to have the same keys")
-    #    for k in self.dl.keys():
-    #        self.dl[k][key] = newvalue[k]
 
 import numpy as np
 def read_initial_guess_file(file, reshape = False):
