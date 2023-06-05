@@ -21,7 +21,7 @@ def create_reference_dict(
         row.update({"h5file" : str(f), "keys" : list(file.keys()), "creation_time" : creation_time})
         rows.append(row)
         file.close()
-        return rows
+    return rows
 
 try:
     import pandas as pd
