@@ -9,7 +9,7 @@ import time
 from sfbox_utils.call import sfbox_calls_sh
 from sfbox_utils.utils import get_number_of_calculations_in_file, split_calculations
 
-from sfbox_utils.store import store_file_parallel, store_file_sequential, create_master_table, load_dataset
+from sfbox_utils.store import store_file_parallel, store_file_sequential, create_reference_table
 
 #%%
 def process(data):
@@ -39,7 +39,7 @@ def naming(data):
 files = list(pathlib.Path("test").glob("*.out"))
 #%%
 store_file_parallel(
-    file = "test/test_input_0.out",
+    file = "test/test_input.out",
     process_routine=process,
     naming_routine=naming,
     reader_kwargs=dict(
@@ -56,14 +56,6 @@ store_file_parallel(
         )
     )
 # %%
-data = create_master_table(dir = "test/h5_files")
-filename = data.query("chi == 0.3").h5file.squeeze()
-load_dataset(filename, "phi")
-# %%
-from sfbox_utils.store import add_external_link
-add_external_link("test/master.h5", "test/h5_files/test_input_0.in_chi_0.0.h5")
-# %%
-file = h5py.File("test/master.h5", "r+")
-# %%
+data = create_reference_table(storage_dir = "test/h5_files")
 
 # %%
