@@ -55,11 +55,12 @@ try:
                     df = pd.DataFrame(columns=keys)
 
                 for key in keys:
-                    df[key] = np.nan
-                    df[key] = df[key].astype(object)
-                    df[key] = df.apply(lambda _: H5StorageAccessor.load_dataset(_.h5file, f"/{key}"), axis=1)
+                    if load_inplace: df[key] = np.nan #create column in the original dataframe
+                    df[key] = df[key].astype(object) #in case of inhomogenous data
+                    df[key] = self._obj.apply(lambda _: H5StorageAccessor.load_dataset(_.h5file, f"/{key}"), axis=1)
                 
                 return df[keys]
+            
         pd.api.extensions.register_dataframe_accessor("dataset")(H5StorageAccessor)
 
         class H5StorageAccessorSeries(H5StorageAccessor):
@@ -69,9 +70,9 @@ try:
                 if load_inplace:
                     df = self._obj
                 else:
-                    df = pd.Series(index=keys)
+                    df = pd.Series(index=keys, dtype = object)
                 for key in keys:
-                    df[key] = H5StorageAccessor.load_dataset(df.h5file, f"/{key}")
+                    df[key] = H5StorageAccessor.load_dataset(self._obj.h5file, f"/{key}")
                 
                 return df[keys]
         pd.api.extensions.register_series_accessor("dataset")(H5StorageAccessorSeries)
