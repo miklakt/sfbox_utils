@@ -6,6 +6,7 @@ import uuid
 import functools
 import multiprocessing as mp
 import shutil
+from datetime import datetime
 
 try:
     import tqdm
@@ -21,38 +22,87 @@ NamingRoutineArgType = Optional[Callable[[Dict[str, Any]], str]]
 FieldsArg = Optional[List]
 PathType = Union[pathlib.Path, str]
 
+on_file_exist_parameters = ["rename", "raise", "rewrite", "add_timestamp", "keep"]
+on_process_ignore_parameters = ["ignore", "raise"]
+
 def store_calculation(
     data : dict,
     dir : PathType = None, 
     process_routine : ProcessRoutineArgType = None,
-    naming_routine :  NamingRoutineArgType = None
+    naming_routine :  NamingRoutineArgType = None,
+    on_file_exist : str = "rename",
+    on_process_error : str = "raise",
+    suffix : str = ".h5"
         ):
     
+    if on_file_exist not in on_file_exist_parameters:
+        raise ValueError(f"Invalid value for the action when the file is already exists\n Possible values: {on_file_exist_parameters}")
+    if on_process_error not in on_process_ignore_parameters:
+        raise ValueError(f"Invalid value for the action when the process routine fails\n Possible values: {on_process_error}")
+
     if dir is None:
         dir = pathlib.Path()
     else:
         dir = pathlib.Path(dir)
 
     if process_routine is not None:
-        data = process_routine(data)
+        if on_process_error == "ignore":
+            try:
+                data = process_routine(data)
+            except Exception as e:
+                print(f"Process routine raised error {e}, the calculation is skipped")
+                return False
+        else:
+            data = process_routine(data)
 
     if naming_routine is not None:
-        filename = naming_routine(data)+".h5"
+        filename = naming_routine(data)+suffix
     else:
-        filename = str(uuid.uuid4())+".h5"
+        #if no naming routine provided fallback to uuid
+        filename = str(uuid.uuid4())+suffix
     filename = pathlib.Path(filename)
+
+    is_file_exists = (dir/filename).is_file()
+    mode = "w"
+    if is_file_exists:
+        print(f"File {filename} already exists, ", end = "")
+        
+        if on_file_exist == "rename":
+            i = 0
+            while is_file_exists:
+                filename = filename.with_stem(str(filename.stem)+f"_{i}")
+                i = i+1
+                is_file_exists = (dir/filename).is_file()
+            print(f"the file will be renamed to {filename}")
+
+        elif on_file_exist=="add_timestamp":
+            timestamp = datetime.now()
+            filename = filename.with_stem(str(filename.stem)+f"_{timestamp}")
+            print(f"the file will be renamed to {filename}")
+
+        elif on_file_exist=="rewrite":
+            print(f"the file {filename} will be rewritten")
+            pass
+
+        elif on_file_exist=="raise":
+            print(f"error will be raised")
+            mode = "x"
+
+        if on_file_exist != "keep":
+            h5file = h5py.File(dir/filename, mode = mode)
+        else:
+            print(f"previous version will be kept", end = "\n")
+            return True
+        print(f"", end = "\n")
+        
 
     scalars = {k : v for k, v in data.items() if not isinstance(v, np.ndarray)}
     datasets = {k : v for k, v in data.items() if isinstance(v, np.ndarray)}
-
-    h5file = h5py.File(dir/filename, mode = "w")
     
     for k, v in scalars.items():
-        #h5file.root._v_attrs.__setattr__(k,v)
         h5file.attrs.create(k,v)
 
     for k, v in datasets.items():
-        #h5file.create_array("/", k, v)
         h5file.create_dataset(name=k, data=v)
     h5file.close()
     return True
@@ -64,7 +114,9 @@ def store_file_sequential(
     process_routine : ProcessRoutineArgType = None,
     naming_routine :  NamingRoutineArgType = None,
     reader_kwargs : dict = {},
-    progress_bar= True,
+    progress_bar : bool = True,
+    on_file_exist : str = "rename",
+    suffix : str = ".h5",
     ):
     file = pathlib.Path(file)
     if dir is None:
@@ -76,13 +128,16 @@ def store_file_sequential(
     n_calculations = get_number_of_calculations_in_file(file)
     if progress_bar:
         print(f"{n_calculations} calculation(s) in {file.name}...")
-        for calculation in _TQDM_TRY_(reader, total = n_calculations):
+        for calculation in _TQDM_TRY_(reader, total = n_calculations, position=0, leave=True):
             store_calculation(
                 data = calculation, 
                 dir = dir, 
                 process_routine = process_routine, 
                 naming_routine = naming_routine,
+                on_file_exist = on_file_exist,
+                suffix = suffix
                 )
+            
     else:
         for calculation in reader:
             store_calculation(
@@ -90,6 +145,8 @@ def store_file_sequential(
                 dir = dir, 
                 process_routine = process_routine, 
                 naming_routine = naming_routine,
+                on_file_exist = on_file_exist,
+                suffix = suffix
                 )
 
 
@@ -99,7 +156,10 @@ def store_files_parallel(
         process_routine : ProcessRoutineArgType = None,
         naming_routine :  NamingRoutineArgType = None,
         n_jobs = 4,
-        reader_kwargs = {}
+        reader_kwargs = {},
+        on_file_exist : str = "rename",
+        suffix : str = ".h5",
+        #progress_bar = True
     ):
 
     file = pathlib.Path(files[0])
@@ -113,14 +173,19 @@ def store_files_parallel(
         dir = dir, 
         process_routine = process_routine,
         naming_routine = naming_routine,
-        reader_kwargs = reader_kwargs
+        reader_kwargs = reader_kwargs,
+        on_file_exist = on_file_exist,
+        suffix = suffix
         )
-
     with mp.Pool(n_jobs) as pool:
         list(_TQDM_TRY_(
             pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files),
-            total=len(files)
+            total=len(files), position=0, leave=True
         ))
+    #else:
+    #    with mp.Pool(n_jobs) as pool:
+    #        list(pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files))
+        
 
     
 def store_file_parallel(
@@ -129,7 +194,10 @@ def store_file_parallel(
         process_routine : ProcessRoutineArgType = None,
         naming_routine :  NamingRoutineArgType = None,
         n_jobs = 4,
-        reader_kwargs = {}
+        reader_kwargs = {},
+        on_file_exist : str = "rename",
+        suffix : str = ".h5",
+        #progress_bar = True
     ):
     file = pathlib.Path(file)
     if dir is None:
@@ -149,7 +217,10 @@ def store_file_parallel(
         process_routine = process_routine, 
         naming_routine = naming_routine, 
         n_jobs = n_jobs, 
-        reader_kwargs = reader_kwargs
+        reader_kwargs = reader_kwargs,
+        on_file_exist = on_file_exist,
+        suffix = suffix,
+        #progress_bar=progress_bar
         )
 
     shutil.rmtree(temp_dir)
