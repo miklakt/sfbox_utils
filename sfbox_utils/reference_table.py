@@ -6,6 +6,7 @@ from datetime import datetime
 
 def create_reference_dict(
         dir : Union[pathlib.Path, str] = None,
+        columns : List[str] = None
     ):
     if dir is None:
         dir = pathlib.Path()
@@ -18,6 +19,7 @@ def create_reference_dict(
         creation_time = datetime.fromtimestamp(f.stat().st_ctime) 
         file = h5py.File(f)
         row = dict(file.attrs.items())
+        if columns is not None: row = {k : v for k, v in row.items() if k in columns}
         row.update({"h5file" : str(f), "keys" : list(file.keys()), "creation_time" : creation_time})
         rows.append(row)
         file.close()
