@@ -50,7 +50,7 @@ def store_calculation(
             try:
                 data = process_routine(data)
             except Exception as e:
-                print(f"Process routine raised error {e}, the calculation is skipped")
+                print(f"Process routine raised an error {e}, the calculation is skipped")
                 return False
         else:
             data = process_routine(data)
@@ -88,13 +88,13 @@ def store_calculation(
             print(f"error will be raised")
             mode = "x"
 
-        if on_file_exist != "keep":
-            h5file = h5py.File(dir/filename, mode = mode)
-        else:
+        elif on_file_exist == "keep":
             print(f"previous version will be kept", end = "\n")
             return True
-        print(f"", end = "\n")
-        
+
+    h5file = h5py.File(dir/filename, mode = mode)
+    print(f"File {filename} is created", end = "\n")
+
 
     scalars = {k : v for k, v in data.items() if not isinstance(v, np.ndarray)}
     datasets = {k : v for k, v in data.items() if isinstance(v, np.ndarray)}
@@ -116,6 +116,7 @@ def store_file_sequential(
     reader_kwargs : dict = {},
     progress_bar : bool = True,
     on_file_exist : str = "rename",
+    on_process_error : str = "raise",
     suffix : str = ".h5",
     ):
     file = pathlib.Path(file)
@@ -135,6 +136,7 @@ def store_file_sequential(
                 process_routine = process_routine, 
                 naming_routine = naming_routine,
                 on_file_exist = on_file_exist,
+                on_process_error = on_process_error,
                 suffix = suffix
                 )
             
@@ -146,6 +148,7 @@ def store_file_sequential(
                 process_routine = process_routine, 
                 naming_routine = naming_routine,
                 on_file_exist = on_file_exist,
+                on_process_error = on_process_error,
                 suffix = suffix
                 )
 
@@ -158,8 +161,9 @@ def store_files_parallel(
         n_jobs = 4,
         reader_kwargs = {},
         on_file_exist : str = "rename",
+        on_process_error : str = "raise",
         suffix : str = ".h5",
-        #progress_bar = True
+        progress_bar = True
     ):
 
     file = pathlib.Path(files[0])
@@ -175,16 +179,18 @@ def store_files_parallel(
         naming_routine = naming_routine,
         reader_kwargs = reader_kwargs,
         on_file_exist = on_file_exist,
+        on_process_error = on_process_error,
         suffix = suffix
         )
-    with mp.Pool(n_jobs) as pool:
-        list(_TQDM_TRY_(
-            pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files),
-            total=len(files), position=0, leave=True
-        ))
-    #else:
-    #    with mp.Pool(n_jobs) as pool:
-    #        list(pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files))
+    if progress_bar:
+        with mp.Pool(n_jobs) as pool:
+            list(_TQDM_TRY_(
+                pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files),
+                total=len(files), position=0, leave=True
+            ))
+    else:
+        with mp.Pool(n_jobs) as pool:
+            pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files)
         
 
     
@@ -196,8 +202,9 @@ def store_file_parallel(
         n_jobs = 4,
         reader_kwargs = {},
         on_file_exist : str = "rename",
+        on_process_error : str = "raise",
         suffix : str = ".h5",
-        #progress_bar = True
+        progress_bar = True
     ):
     file = pathlib.Path(file)
     if dir is None:
@@ -219,8 +226,9 @@ def store_file_parallel(
         n_jobs = n_jobs, 
         reader_kwargs = reader_kwargs,
         on_file_exist = on_file_exist,
+        on_process_error = on_process_error,
         suffix = suffix,
-        #progress_bar=progress_bar
+        progress_bar=progress_bar
         )
 
     shutil.rmtree(temp_dir)
