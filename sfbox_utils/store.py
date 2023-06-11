@@ -7,12 +7,39 @@ import functools
 import multiprocessing as mp
 import shutil
 from datetime import datetime
+import logging
+import sys
+
+logging.basicConfig(stream=sys.stdout)
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 try:
     import tqdm
-    _TQDM_TRY_ = tqdm.tqdm
-except:
+    import tqdm.autonotebook
+    _TQDM_TRY_ = tqdm.autonotebook.tqdm
+    from tqdm.contrib.logging import logging_redirect_tqdm
+    class TqdmLoggingHandler(logging.Handler):
+        def __init__(self, level=logging.NOTSET):
+            super().__init__(level)
+
+        def emit(self, record):
+            try:
+                msg = self.format(record)
+                tqdm.tqdm.write(msg)
+                self.flush()
+            except Exception:
+                self.handleError(record)  
+    log.addHandler(TqdmLoggingHandler())
+    _TQDM_FOUND_ = True
+    
+except ModuleNotFoundError:
     _TQDM_TRY_ = lambda x, *_, **__: x
+    import contextlib
+    logging_redirect_tqdm = contextlib.nullcontext
+    _TQDM_FOUND_ = False
+
+
 
 from .read_output import parse_file
 from .utils import get_number_of_calculations_in_file, split_calculations
@@ -50,7 +77,7 @@ def store_calculation(
             try:
                 data = process_routine(data)
             except Exception as e:
-                print(f"Process routine raised an error {e}, the calculation is skipped")
+                log.error(f"Process routine raised an error {e}, the calculation is skipped")
                 return False
         else:
             data = process_routine(data)
@@ -65,7 +92,7 @@ def store_calculation(
     is_file_exists = (dir/filename).is_file()
     mode = "w"
     if is_file_exists:
-        print(f"File {filename} already exists, ", end = "")
+        msg_header = f"File {filename} already exists"
         
         if on_file_exist == "rename":
             i = 0
@@ -73,27 +100,27 @@ def store_calculation(
                 filename = filename.with_stem(str(filename.stem)+f"_{i}")
                 i = i+1
                 is_file_exists = (dir/filename).is_file()
-            print(f"the file will be renamed to {filename}")
+            log.warning(f"{msg_header}, the file will be renamed to {filename}")
 
         elif on_file_exist=="add_timestamp":
             timestamp = datetime.now()
             filename = filename.with_stem(str(filename.stem)+f"_{timestamp}")
-            print(f"the file will be renamed to {filename}")
+            log.warning(f"{msg_header}, the file will be renamed to {filename}")
 
         elif on_file_exist=="rewrite":
-            print(f"the file {filename} will be rewritten")
+            log.warning(f"{msg_header}, the file will be rewritten")
             pass
 
         elif on_file_exist=="raise":
-            print(f"error will be raised")
+            log.error(f"{msg_header}, error will be raised")
             mode = "x"
 
         elif on_file_exist == "keep":
-            print(f"previous version will be kept", end = "\n")
+            log.warning(f"{msg_header}, previous version will be kept")
             return True
 
     h5file = h5py.File(dir/filename, mode = mode)
-    print(f"File {filename} is created", end = "\n")
+    log.info(f"File {filename} is created")
 
 
     scalars = {k : v for k, v in data.items() if not isinstance(v, np.ndarray)}
@@ -114,10 +141,9 @@ def store_file_sequential(
     process_routine : ProcessRoutineArgType = None,
     naming_routine :  NamingRoutineArgType = None,
     reader_kwargs : dict = {},
-    progress_bar : bool = True,
     on_file_exist : str = "rename",
     on_process_error : str = "raise",
-    suffix : str = ".h5",
+    suffix : str = ".h5"
     ):
     file = pathlib.Path(file)
     if dir is None:
@@ -127,30 +153,30 @@ def store_file_sequential(
         dir = pathlib.Path(dir)
     reader = parse_file(file, **reader_kwargs)
     n_calculations = get_number_of_calculations_in_file(file)
-    if progress_bar:
-        print(f"{n_calculations} calculation(s) in {file.name}...")
-        for calculation in _TQDM_TRY_(reader, total = n_calculations, position=0, leave=True):
-            store_calculation(
-                data = calculation, 
-                dir = dir, 
-                process_routine = process_routine, 
-                naming_routine = naming_routine,
-                on_file_exist = on_file_exist,
-                on_process_error = on_process_error,
-                suffix = suffix
-                )
-            
+    if n_calculations>1:
+        with logging_redirect_tqdm():
+            log.info(f"{n_calculations} calculation(s) in {file.name}...")
+            for calculation in _TQDM_TRY_(reader, total = n_calculations, position=0, leave=True):
+                store_calculation(
+                    data = calculation, 
+                    dir = dir, 
+                    process_routine = process_routine, 
+                    naming_routine = naming_routine,
+                    on_file_exist = on_file_exist,
+                    on_process_error = on_process_error,
+                    suffix = suffix
+                    )
     else:
         for calculation in reader:
-            store_calculation(
-                data = calculation, 
-                dir = dir, 
-                process_routine = process_routine, 
-                naming_routine = naming_routine,
-                on_file_exist = on_file_exist,
-                on_process_error = on_process_error,
-                suffix = suffix
-                )
+                store_calculation(
+                    data = calculation, 
+                    dir = dir, 
+                    process_routine = process_routine, 
+                    naming_routine = naming_routine,
+                    on_file_exist = on_file_exist,
+                    on_process_error = on_process_error,
+                    suffix = suffix
+                    )
 
 
 def store_files_parallel(
@@ -163,7 +189,6 @@ def store_files_parallel(
         on_file_exist : str = "rename",
         on_process_error : str = "raise",
         suffix : str = ".h5",
-        progress_bar = True
     ):
 
     file = pathlib.Path(files[0])
@@ -182,15 +207,12 @@ def store_files_parallel(
         on_process_error = on_process_error,
         suffix = suffix
         )
-    if progress_bar:
+    if _TQDM_FOUND_: pbar = tqdm.autonotebook.tqdm(total=len(files), leave=True)
+    with logging_redirect_tqdm():
         with mp.Pool(n_jobs) as pool:
-            list(_TQDM_TRY_(
-                pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files),
-                total=len(files), position=0, leave=True
-            ))
-    else:
-        with mp.Pool(n_jobs) as pool:
-            pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs, progress_bar = False), files)
+            for _ in pool.imap_unordered(functools.partial(store_file_sequential, **partial_kwargs), files):
+                if _TQDM_FOUND_: pbar.update(1)
+    if _TQDM_FOUND_: pbar.close()
         
 
     
@@ -204,7 +226,6 @@ def store_file_parallel(
         on_file_exist : str = "rename",
         on_process_error : str = "raise",
         suffix : str = ".h5",
-        progress_bar = True
     ):
     file = pathlib.Path(file)
     if dir is None:
@@ -213,6 +234,9 @@ def store_file_parallel(
     else:
         dir = pathlib.Path(dir)
     
+    n_calculations = get_number_of_calculations_in_file(file)
+    log.info(f"{n_calculations} calculation(s) in {file.name}...")
+
     split_calculations(file)
     
     temp_dir= file.parent / (file.stem+"_tmp")
@@ -228,7 +252,6 @@ def store_file_parallel(
         on_file_exist = on_file_exist,
         on_process_error = on_process_error,
         suffix = suffix,
-        progress_bar=progress_bar
         )
 
     shutil.rmtree(temp_dir)
@@ -248,7 +271,7 @@ def add_external_link(
     if name is None:
         name = source.stem
     
-    print(source, name)
+    log.debug(source, name)
     
     if not isinstance(destination, h5py.File):
         destination = h5py.File(destination, mode = "a")
