@@ -151,13 +151,21 @@ def parse_file(
             line_ = line_.rstrip()
 
             if ignore_fields is not None:
-                return line_ in ignore_fields
+                if line_ in ignore_fields:
+                    logger.debug(f"{line_} ignored explicitly")
+                    return True
+                else:
+                    return False
 
             if read_fields is not None:
-                if line_ in read_fields: return False
+                if line_ in read_fields:
+                    logger.debug(f"{line_} is read, found in read_fields")
+                    return False
 
             if read_fields_regex is not None:
-                if any([bool(p_.match(line_)) for p_ in p]): return False
+                if any([bool(p_.match(line_)) for p_ in p]): 
+                    logger.debug(f"{line_} is read, pass to read_fields_regex")
+                    return False
 
             return True
 

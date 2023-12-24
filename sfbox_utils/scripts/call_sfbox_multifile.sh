@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# The script runs up to 'cpu_count' sfbox processes in parallel, 
+# until all files with mask '*.in' are processed.
+
 cpu_count=$1
 executable=$2
 echo "running sfbox with multiple input files"

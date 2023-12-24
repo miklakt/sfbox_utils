@@ -33,16 +33,20 @@ def sfbox_call(filename : pathlib.Path, wait = True):
 
     Args:
         filename (str): path to an input file
-        wait (bool, optional): If set to false
+        wait (bool, optional): If set to False
             python interpreter will not be locked,
-            but log file will not be closed.
+            but log file has to be closed by the user manually.
             Defaults to True.
 
     Returns:
         [(Popen, log) or None]: if wait is set to true function returns nothing,
             otherwise a subprocess.Popen object
-            and opened log file will be returned
+            and opened log file is returned
     """
+
+    if isinstance(filename, str):
+        filename = pathlib.Path(filename)
+
     executable_path = conf['exe_path']
     logger.info(f'subprocess call {executable_path} {filename.name}')
     log = open(filename.with_suffix('.log'), 'w')
@@ -61,6 +65,15 @@ def sfbox_call(filename : pathlib.Path, wait = True):
             break
 
 def sfbox_calls_subprocess(dir = None):
+    """Create a pool of task to process all sfbox input files in a directory.
+    Number of of max sfbox instances that can work in parallel is defined in 
+    conf['cpu_count'].
+    The pool is created with Python subprocess package.
+
+    Args:
+        dir (str): path to a directory with input files. 
+            Defaults to the working directory.
+    """    
     if dir is None:
         dir = os.getcwd()
     cpu_count = conf['cpu_count']
@@ -95,6 +108,23 @@ def sfbox_calls_subprocess(dir = None):
     return
 
 def sfbox_calls_sh(dir = None , wait = True):
+    """Create a pool of task to process all sfbox input files in a directory.
+    Number of of max sfbox instances that can work in parallel is defined in 
+    conf['cpu_count'].
+    The pool is created with bash xargs command.
+
+    Args:
+        dir (str): path to a directory with input files. 
+            Defaults to the working directory.
+        wait (bool, optional): If set to True
+            python interpreter will be locked until all jobs are done.
+            Defaults to True.
+
+    Returns:
+        [(Popen, log) or None]: if wait is set to True function returns nothing,
+            otherwise a subprocess.Popen object is returned
+    """
+
     if dir is None:
         dir = os.getcwd()
     cpu_count = conf['cpu_count']
@@ -116,6 +146,13 @@ def sfbox_calls_sh(dir = None , wait = True):
                 break
 
 def sfbox_calls(parallel_execution = 'sh', **kwargs):
+    """Wrapper function to call multiple sfbox instances. 
+    Parallel execution framework is python subprocesses or bash xargs.
+
+    Args:
+        dir (str): parallel execution framework 'sh' or 'subprocess'. 
+            Defaults to 'sh'.
+    """
     if parallel_execution == "sh":
         sfbox_calls_sh(**kwargs)
     elif parallel_execution == "subprocess":
