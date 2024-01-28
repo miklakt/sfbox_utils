@@ -32,11 +32,12 @@ def get_line_type(line : str) -> str:
     Returns:
         str: linetype
     """
-    line = line.rstrip('\r\n')
     if (line == ''):
         return InputLineType.empty
-    if ('/' in line) or ('#' in line):
+    if line.startswith(('//', '#')):
         return InputLineType.comment
+    #if ('/' in line) or ('#' in line):
+    #    return InputLineType.comment
     if (line == 'start'):
         return InputLineType.block_separator
     if ':' in line:
@@ -79,6 +80,7 @@ def parse_statement(
     Returns:
         tuple|dict: parsed to a tuple or a dict statement
     """
+
     if ":" not in line:
         raise ParseError("Can not parse the line no separator found")
 
@@ -110,11 +112,28 @@ def parse_statement(
 def parse_block(lines : Union[List[str], str], to_dict=True, **kwargs):
     if isinstance(lines, str):
         lines = [line.strip() for line in lines.split("\n")]
+    
 
-    parsed_lines = [parse_statement(line, to_dict = to_dict, **kwargs) for line in lines]
+    parsed_lines = [parse_statement(line, to_dict = False, **kwargs) for line in lines]
 
     if to_dict:
-            parsed_lines = dict((key, val) for k in parsed_lines for key, val in k.items())
+            #parsed_lines = dict((key, val) for k in parsed_lines for key, val in k.items())
+            parsed_lines_dict = {}
+            for line in parsed_lines:
+                try:
+                    key, val = line
+                except:
+                    print(line)
+                    raise ValueError
+                if key not in parsed_lines_dict:
+                    parsed_lines_dict[key] = val
+                else:
+                    print(f"'{key}' is already found")
+                    old_val = parsed_lines_dict[key]
+                    if not isinstance(old_val, list): old_val = [old_val]
+                    old_val.append(val)
+                    parsed_lines_dict[key] = old_val
+            parsed_lines = parsed_lines_dict
 
     return parsed_lines
 
@@ -126,6 +145,11 @@ def parse_file(
     blocks = []
     lines = []
     while line := f.readline():
+        #remove everything after // and #
+        line = line.split("#")[0]
+        line = line.partition("//")[0]
+        line = line.rstrip('\r\n')
+
         line_type = get_line_type(line)
         if line_type == InputLineType.comment or line_type == InputLineType.empty:
             pass

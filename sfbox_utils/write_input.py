@@ -33,14 +33,15 @@ def write_input_file(filename : Union[str, pathlib.Path], data :  Union[Dict, Li
     
     for i, d in enumerate(data):
         for k,v in d.items():
-            
-            #boolean to string
-            if v is False:
-                v = 'false'
-            elif v is True:
-                v = 'true'
-            
-            f.write(f'{k}:{v}\n')
+            if not isinstance(v, list): v = [v]
+            for v_ in v:
+                #boolean to string
+                if v_ is False:
+                    v_ = 'false'
+                elif v_ is True:
+                    v_ = 'true'
+                f.write(f'{k}:{v_}\n')
+                
         f.write('start\n')
         logger.info(
             f"Calculation number {i} is appended to file {filename}")
