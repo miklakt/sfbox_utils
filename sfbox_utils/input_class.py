@@ -1,5 +1,5 @@
 from typing import Dict, List, Callable
-class TaskItemClass(Dict):
+class InputItemClass(Dict):
     def __init__(self, fields ={}, properties = {}):
         self.update(fields)
         self.properties = properties
@@ -47,29 +47,36 @@ class TaskItemClass(Dict):
 
         prop = property(fget, fset, fdel, doc)
         setattr(self.__class__, name, prop)
-        print(doc)
+        #print(doc)
 
     def add_alias(self, key, field):
         doc = f"'{key}' is an alias for '{field}'"
         self.add_property(key, field, field, field, doc)
-class InputClass(List):
-    def __init__(self, fields, properties):
-        super().__init__(TaskItemClass(item, properties) for item in fields)
+class InputListClass(List):
+    def __init__(self, fields={}, properties={}):
+        self.properties = properties
+        super().__init__(InputItemClass(item, self.properties) for item in fields)
 
     def __setitem__(self, index, item):
-        super().__setitem__(index, TaskItemClass(item))
+        if not isinstance(item, type(self)):
+            item = InputItemClass(item, self.properties)
+        super().__setitem__(index, item)
 
     def insert(self, index, item):
-        super().insert(index, TaskItemClass(item))
+        if not isinstance(item, type(self)):
+            item = InputItemClass(item, self.properties)
+        super().insert(index, item)
 
     def append(self, item):
-        super().append(TaskItemClass(item))
+        if not isinstance(item, type(self)):
+            item = InputItemClass(item, self.properties)
+        super().append(item)
 
     def extend(self, other):
         if isinstance(other, type(self)):
             super().extend(other)
         else:
-            super().extend(TaskItemClass(item) for item in other)
+            super().extend(InputItemClass(item, self.properties) for item in other)
 
     def __str__(self) -> str:
         s = "start\n".join(f"{item}" for item in self)
