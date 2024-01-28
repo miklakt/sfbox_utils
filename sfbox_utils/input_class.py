@@ -105,3 +105,7 @@ class InputListClass(List):
     def __str__(self) -> str:
         s = "start\n".join(f"{item}" for item in self) + "start\n"
         return s
+    
+    def writefile(self, filename):
+        with open(filename, "w") as f:
+            f.writelines(str(self))
