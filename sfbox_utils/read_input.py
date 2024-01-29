@@ -74,8 +74,8 @@ def parse_statement(
         to_dict (bool, optional): Save result as a dict, otherwise as a tuple. Defaults to False.
 
     Raises:
-        ParseError: Failed to parse, while no separators between keywords were found
-        ParseError: Failed to parse, while not enough keywords in the line
+        ParseError: Failed to parse, no separators between keywords were found
+        ParseError: Failed to parse, not enough keywords in the line
 
     Returns:
         tuple|dict: parsed to a tuple or a dict statement
@@ -113,22 +113,17 @@ def parse_block(lines : Union[List[str], str], to_dict=True, **kwargs):
     if isinstance(lines, str):
         lines = [line.strip() for line in lines.split("\n")]
     
-
     parsed_lines = [parse_statement(line, to_dict = False, **kwargs) for line in lines]
 
     if to_dict:
             #parsed_lines = dict((key, val) for k in parsed_lines for key, val in k.items())
             parsed_lines_dict = {}
             for line in parsed_lines:
-                try:
-                    key, val = line
-                except:
-                    print(line)
-                    raise ValueError
+                key, val = line
                 if key not in parsed_lines_dict:
                     parsed_lines_dict[key] = val
                 else:
-                    print(f"'{key}' is already found")
+                    #print(f"'{key}' is already found")
                     old_val = parsed_lines_dict[key]
                     if not isinstance(old_val, list): old_val = [old_val]
                     old_val.append(val)

@@ -1,4 +1,5 @@
 from typing import Dict, List, Callable
+from .read_input import parse_file
 class InputItemClass(Dict):
     def __init__(self, fields ={}, properties = {}):
         self.update(fields)
@@ -63,9 +64,19 @@ class InputItemClass(Dict):
         doc = f"'{key}' is an alias for '{field}'"
         self.add_property(key, field, field, field, doc)
 class InputListClass(List):
-    def __init__(self, fields={}, properties={}):
+    def __init__(
+            self, 
+            fields:dict = {}, 
+            properties:dict = {}, 
+            filename:str = None
+            ):
+        if fields and filename: raise AttributeError("Pass either fields or file")
+        if not(fields): fields = InputListClass.__readfile(filename)
         self.properties = properties
         super().__init__(InputItemClass(item, self.properties) for item in fields)
+
+    def __readfile(filename):
+        return parse_file("template/micelle.txt")
 
     def __setitem__(self, index, item):
         if not isinstance(item, type(self)):
