@@ -76,7 +76,7 @@ class InputListClass(List):
         super().__init__(InputItemClass(item, self.properties) for item in fields)
 
     def __readfile(filename):
-        return parse_file("template/micelle.txt")
+        return parse_file(filename)
 
     def __setitem__(self, index, item):
         if not isinstance(item, type(self)):
