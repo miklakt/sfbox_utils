@@ -74,9 +74,9 @@ try:
                 else:
                     df = pd.Series(index=keys, dtype = object)
                 for key in keys:
-                    df[key] = H5StorageAccessor.load_dataset(self._obj.h5file, f"/{key}")
-                
-                return df[keys]
+                    loaded_data = H5StorageAccessor.load_dataset(self._obj.h5file, f"/{key}")
+                    df[key] = loaded_data
+                return df[keys].squeeze()
         pd.api.extensions.register_series_accessor("dataset")(H5StorageAccessorSeries)
             
         dataframe = pd.DataFrame(create_reference_dict(storage_dir))
