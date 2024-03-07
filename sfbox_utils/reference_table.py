@@ -65,8 +65,7 @@ try:
         def __getitem__(self, keys):
             if not isinstance(keys, list):
                 keys = [keys]
-            else:
-                df = pd.Series(index=keys, dtype = object)
+            df = pd.Series(index=keys, dtype = object)
             for key in keys:
                 loaded_data = H5StorageAccessor.load_dataset(self._obj.h5file, f"/{key}")
                 df[key] = loaded_data
