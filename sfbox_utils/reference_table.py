@@ -50,9 +50,7 @@ try:
         def __getitem__(self, keys):
             if not isinstance(keys, list):
                 keys = [keys]
-            else:
-                df = pd.DataFrame(columns=keys)
-
+            df = pd.DataFrame(columns=keys)
             for key in keys:
                 df[key] = df[key].astype(object) #in case of inhomogenous data
                 df[key] = self._obj.apply(lambda _: H5StorageAccessor.load_dataset(_.h5file, f"/{key}"), axis=1)
