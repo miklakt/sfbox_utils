@@ -1,6 +1,7 @@
 from typing import Dict, List, Callable
+from collections import OrderedDict
 from .read_input import parse_file
-class InputItemClass(Dict):
+class InputItemClass(OrderedDict):
     def __init__(self, fields ={}, properties = {}):
         self.update(fields)
         self.properties = properties
